@@ -2,7 +2,6 @@ import dash
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
 import dash_core_components as dcc
-import dash_html_components as html
 import dash_bootstrap_components as dbc  # Importa Dash Bootstrap Components
 from dash import Dash, html, Output, Input, State, no_update
 import rasterio
@@ -23,7 +22,7 @@ from dash.exceptions import PreventUpdate
 
 # Carga de datos y definición de variables
 shp_municipal = gpd.read_file("./assets/Datos/shp/Historicos_Acciones.shp")
-shp_regional = gpd.read_file("./assets/Datos/shp/Regional.shp")
+shp_regional = gpd.read_file("./assets/Datos/shp/Regional_.shp")
 columns_list = shp_municipal.columns.tolist()
 opciones_cloro = [col for col in columns_list if 'CLORO' in col]
 anios = {i: re.sub(r"CLORO_", "", col) for i, col in enumerate(opciones_cloro)}
@@ -73,7 +72,7 @@ colorbar = dlx.categorical_colorbar(
 geojson = dl.GeoJSON(
     data=map_default_municipal,
     style=style_handle,
-    zoomToBounds=True,
+    zoomToBounds=False,
     zoomToBoundsOnClick=True,
     hoverStyle=arrow_function(dict(weight=5, color='#666', dashArray='')),
     hideout=dict(colorscale=colorscale, classes=classes, style=style, colorProp="Valor-actual"),
@@ -87,7 +86,7 @@ geojson = dl.GeoJSON(
 
 encabezado = dbc.Row([
     dbc.Col(
-        html.H2("Indicadores de Calidad del Agua", style={'color': 'white', 'margin': '0', 'padding': '2vh 0 0 10px'}),
+        html.H2("Indicadores de Calidad del Agua ", style={'color': 'white', 'margin': '0', 'padding': '2vh 0 0 10px'}),
         width=7, xxl=7, xl=7, lg=7, md=7, sm=12, xs=12,
         style={'backgroundColor': 'rgb(157, 36, 73)', 'padding': '0', 'margin': '0'}
     ),
@@ -264,6 +263,7 @@ offcanvas_layers = html.Div(
 ########################
 
 municipal_geo = funciones_auxiliares.obtenerCentroides_Municipales(shp_municipal)
+print(len(municipal_geo.latitud.unique()))
 regional_geo = funciones_auxiliares.obtenerCentroides_Regionales(shp_regional)
 
 # Dropdown para buscar municipios o regiones según el mapa actual.
@@ -271,7 +271,6 @@ buscador = dcc.Dropdown(
     id='buscador',
     options=[{'label': mun, 'value': latitud} for mun, latitud in zip(municipal_geo.NOM_MUN, municipal_geo.latitud)],
     placeholder="Buscar:",
-    value=None,
     clearable=False,
     className="buscador_custom"
 )
@@ -294,13 +293,17 @@ offcanvas_search = html.Div(
 
 
 
-modal_information = dbc.Modal( children = 
-    [ dbc.ModalHeader(dbc.ModalTitle("Informacion Adicional")),
-    dbc.ModalBody("La Norma Oficial Mexicana NOM-127-SSA1-2021 establece que el agua de uso y consumo humano debe presentar una concentración de cloro residual libre entre 0.2 y 1.5mg/L."),
+modal_information = dbc.Modal(children=[
+    dbc.ModalHeader(dbc.ModalTitle("Información Adicional")),
+    dbc.ModalBody([
+        "La Norma Oficial Mexicana ",
+        html.A("NOM-127-SSA1-2021", href="https://www.dof.gob.mx/nota_detalle_popup.php?codigo=5650705", target="_blank"),
+        " establece que el agua de uso y consumo humano debe presentar una concentración de cloro residual libre entre 0.2 y 1.5mg/L."
+    ]),
     dbc.ModalFooter(
         dbc.Button("De Acuerdo", id="close_information", className="ms-auto", n_clicks=0)
-        ),
-    ],
+    ),
+],
     id="modal_information",
     is_open=False,
 )
@@ -392,7 +395,7 @@ barra_lateral = html.Div(
         "height": "100vh", 
         'width': '6vw',
         "zIndex": "1000"
-    }
+    },
 )
 
 # Mapa
@@ -407,9 +410,10 @@ mapa = dbc.Row(
                     geojson,
                     barra_lateral,
                 ],
-                center=[20, -98], 
-                zoom=6,
-                zoomControl=False, 
+                center=[20.41509, -98.82936],  # Coordenadas iniciales
+                zoom=9,
+                viewport={"center": [20.41509, -98.82936], "zoom": 9},  # Cambiado a viewport
+                zoomControl=False,
                 style={'height': '88vh'}
             ),
             width=12, xxl=12, xl=12, lg=12, md=12, sm=12, xs=12,
@@ -439,7 +443,7 @@ simbologia_imagen = html.Div(
 
 app = Dash(
     prevent_initial_callbacks=True,
-    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME, dbc.icons.BOOTSTRAP]
+    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME, dbc.icons.BOOTSTRAP,"assets/Style.css"],
 )
 app.layout = dbc.Container([
     encabezado,
@@ -449,7 +453,7 @@ app.layout = dbc.Container([
     modal_information,
     modal_question,
     simbologia_imagen,
-    dcc.Store(id="current_map", data="municipal")
+    dcc.Store(id="current_map", data="municipal"),  # Almacena el estado actual del mapa
 ],
     fluid=True,
     style={'height': '100vh', 'width': '100vw', 'padding': '0', 'margin': '0'}
@@ -523,9 +527,10 @@ def modal_question_open(n1, n2, is_open):
         Input("botton_regional", "n_clicks")
     ],
     State("current_map", "data"),
+    State("slider_periodo","value"),
     prevent_initial_call=True  # evita que se dispare automáticamente al cargar
 )
-def toggle_active(mun_clicks, reg_clicks, current_map):
+def toggle_active(mun_clicks, reg_clicks, current_map,valor_actual_slider):
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -536,7 +541,7 @@ def toggle_active(mun_clicks, reg_clicks, current_map):
     if clicked == "botton_municipal":
         # Se genera el mapa para el caso municipal
         new_data = funciones_auxiliares.generarMapApartirEleccion_Municipal(
-            arhivo_sph=shp_municipal, lista_eleccion=opciones_cloro[-1]
+            arhivo_sph=shp_municipal, lista_eleccion=opciones_cloro[valor_actual_slider]
         )
         opciones = [{'label': mun, 'value': latitud} 
                     for mun, latitud in zip(municipal_geo.NOM_MUN, municipal_geo.latitud)]
@@ -545,7 +550,7 @@ def toggle_active(mun_clicks, reg_clicks, current_map):
     elif clicked == "botton_regional":
         # Se genera el mapa para el caso regional
         new_data = funciones_auxiliares.generarMapApartirEleccion_Regional(
-            arhivo_sph=shp_regional, lista_eleccion=opciones_cloro[-1]
+            arhivo_sph=shp_regional, lista_eleccion=opciones_cloro[valor_actual_slider]
         )
         opciones = [{'label': mun, 'value': lat} 
                     for mun, lat in zip(regional_geo.Región, regional_geo.latitud)]
@@ -605,43 +610,32 @@ def moverse_automaticamente(n_intervals, valor_actual):
     nuevo_valor = (valor_actual + 1) % total_anios
     return nuevo_valor
 
-
 # Callback para centrar el mapa al seleccionar un municipio o región desde el dropdown
 @app.callback(
-    [Output("mapa", "center"),
-     Output("mapa", "zoom")],
+    Output("mapa", "viewport"),
     Input("buscador", "value"),
-    State("current_map", "data"),prevent_initial_call=True
+    State("current_map", "data"),
+    prevent_initial_call=True
 )
 def update_map(latitud, current_map):
+    if latitud is None:
+        raise PreventUpdate
+
     if current_map == "municipal":
-        if latitud is None:
+        # Filtra el DataFrame para encontrar el municipio seleccionado
+        municipio = municipal_geo[municipal_geo["latitud"] == latitud]
+        if municipio.empty:
             raise PreventUpdate
-        else:
-            # Filtra el DataFrame para encontrar el municipio seleccionado
-            municipio = municipal_geo[municipal_geo["latitud"] == latitud]
-            
-            # Extrae la Longitud del municipio seleccionado y conviértelo a un valor único
-            longitud = municipio["longitud"]
-            
-            if longitud is None:
-                raise PreventUpdate
-            
+        longitud = float(municipio.longitud.iloc[0])
     else:
-        if latitud is None:
+        # Filtra el DataFrame para encontrar la región seleccionada
+        region = regional_geo[regional_geo["latitud"] == latitud]
+        if region.empty:
             raise PreventUpdate
-        else:
-            # Filtra el DataFrame para encontrar el municipio seleccionado
-            municipio = regional_geo[regional_geo["latitud"] == latitud]
-            
-            # Extrae la Longitud del municipio seleccionado y conviértelo a un valor único
-            longitud = municipio["longitud"]
-            
-            if longitud is None:
-                raise PreventUpdate
-            
-        # Actualiza el mapa con la nueva ubicación
-    return [latitud, longitud], 10
+        longitud = float(region.longitud.iloc[0])
+
+    # Actualiza el viewport del mapa con la nueva ubicación
+    return {"center": [latitud, longitud], "zoom": 12}
 
 #################
 ### Copilador ###
