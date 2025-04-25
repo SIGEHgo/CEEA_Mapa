@@ -19,6 +19,7 @@ import geopandas as gpd
 import funciones_auxiliares
 from funciones_auxiliares import generarMapApartirEleccion_Municipal, generarMapApartirEleccion_Regional, obtenerCentroides_Municipales, obtenerCentroides_Regionales
 from dash.exceptions import PreventUpdate
+from flask import Flask
 
 # Carga de datos y definición de variables
 shp_municipal = gpd.read_file("./assets/Datos/shp/Historicos_Acciones.shp")
@@ -439,12 +440,10 @@ simbologia_imagen = html.Div(
     },
     className="simbologia_imagen_custom"
 )
+server = Flask(__name__)
 
+app = dash.Dash(server=server, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME, dbc.icons.BOOTSTRAP,"assets/Style.css"],)
 
-app = Dash(
-    prevent_initial_callbacks=True,
-    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME, dbc.icons.BOOTSTRAP,"assets/Style.css"],
-)
 app.layout = dbc.Container([
     encabezado,
     mapa,
@@ -642,4 +641,4 @@ def update_map(latitud, current_map):
 #################
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run_server()
