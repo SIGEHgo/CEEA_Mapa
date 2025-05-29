@@ -17,20 +17,21 @@ import re
 from dash_extensions.javascript import arrow_function, assign
 import geopandas as gpd
 import funciones_auxiliares
-from funciones_auxiliares import generarMapApartirEleccion_Municipal, generarMapApartirEleccion_Regional, obtenerCentroides_Municipales, obtenerCentroides_Regionales
+from funciones_auxiliares import generarMapApartirEleccion_Municipal, generarMapApartirEleccion_Regional, obtenerCentroides_Municipales, obtenerCentroides_Regionales, generarMap_dosificadores
 from dash.exceptions import PreventUpdate
 from flask import Flask
 
 # Carga de datos y definición de variables
 shp_municipal = gpd.read_file("./assets/Datos/shp/Historicos_Acciones.shp")
 shp_regional = gpd.read_file("./assets/Datos/shp/Regional_.shp")
+shp_dosificadores = gpd.read_file("./assets/Datos/shp/Dosidicadores.shp")
 columns_list = shp_municipal.columns.tolist()
 opciones_cloro = [col for col in columns_list if 'CLORO' in col]
 anios = {i: re.sub(r"CLORO_", "", col) for i, col in enumerate(opciones_cloro)}
 
 map_default_municipal = funciones_auxiliares.generarMapApartirEleccion_Municipal(arhivo_sph=shp_municipal, lista_eleccion=opciones_cloro[-1])
 map_default_regional = funciones_auxiliares.generarMapApartirEleccion_Regional(arhivo_sph=shp_regional, lista_eleccion=opciones_cloro[-1])
-
+map_dosificadores = funciones_auxiliares.generarMap_dosificadores(arhivo_sph = shp_dosificadores)
 
 #########################
 ### Paleta de colores ###
@@ -78,6 +79,10 @@ geojson = dl.GeoJSON(
     hoverStyle=arrow_function(dict(weight=5, color='#666', dashArray='')),
     hideout=dict(colorscale=colorscale, classes=classes, style=style, colorProp="Valor-actual"),
     id="geojson"
+)
+
+geojson_dosificadores = dl.GeoJSON(
+    data=map_dosificadores
 )
 
 
@@ -299,7 +304,7 @@ modal_information = dbc.Modal(children=[
     dbc.ModalBody([
         "La Norma Oficial Mexicana ",
         html.A("NOM-127-SSA1-2021", href="https://www.dof.gob.mx/nota_detalle_popup.php?codigo=5650705", target="_blank"),
-        " establece que el agua de uso y consumo humano debe presentar una concentración de cloro residual libre entre 0.2 y 1.5mg/L."
+        " establece que el agua de uso y consumo humano debe presentar una concentración de ", html.Strong("Cloro Residual Libre (CL)"), " entre 0.2 y 1.5mg/L."
     ]),
     dbc.ModalFooter(
         dbc.Button("De Acuerdo", id="close_information", className="ms-auto", n_clicks=0)
@@ -399,6 +404,7 @@ barra_lateral = html.Div(
     },
 )
 
+
 # Mapa
 mapa = dbc.Row(
     children=[
@@ -407,9 +413,17 @@ mapa = dbc.Row(
                 id="mapa",  # Id asignado para usar en callbacks
                 children=[
                     dl.TileLayer(),
-                    dl.ZoomControl(position="topright"),
-                    geojson,
+                    dl.LayersControl(
+                        children=[
+                            dl.BaseLayer(children=[geojson], name="Cloro Residual Libre", checked=True),
+                            dl.Overlay(children=[geojson_dosificadores], name="Dosificadores de Cloro", checked=False),
+                        ],
+                        position="topright",
+                        id="layers_control",
+                        collapsed= False,  # Para que el control de capas esté expandido por defecto
+                    ),
                     barra_lateral,
+                    dl.ZoomControl(position="topleft"),
                 ],
                 center=[20.41509, -98.82936],  # Coordenadas iniciales
                 zoom=9,
@@ -641,4 +655,4 @@ def update_map(latitud, current_map):
 #################
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
