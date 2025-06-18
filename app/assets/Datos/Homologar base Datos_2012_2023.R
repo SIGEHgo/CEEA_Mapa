@@ -104,9 +104,8 @@ sf::write_sf(municipal, "app/assets/Datos/shp/Municipal_prueba.shp")
 ## Homologar base ##
 ####################
 
-
-
 datos = readxl::read_xlsx("app/assets/Datos/DATOS_2012_2023.xlsx") 
+
 
 mun = sf::read_sf("../../Importantes_documentos_usar/Municipios/municipiosjair.shp")
 mun = mun |>  
@@ -164,7 +163,7 @@ loc = loc |>
                 Localidad = iconv(x = Localidad, from = "UTF-8", to = "ASCII//TRANSLIT"),
                 Localidad = stringr::str_trim(Localidad),
                 Id = paste0(substr(x = CVEGEO, start = 1, stop = 5), "_", Localidad)
-  ) |>  sf::st_drop_geometry()
+  ) 
 
 
 datos = datos |> 
@@ -177,21 +176,445 @@ unicos = datos$Id |>  unique()
 unicos[which(!unicos %in% loc$Id)]
 
 
-datos = datos  |> 
-  dplyr::mutate(Municipio = dplyr::case_when(
-    Id == "13001_Colonia 28 De Mayo" ~ "13001_28 de Mayo (Santa Rosa) [Colonia]",
+
+interes = unicos[which(!unicos %in% loc$Id)] 
+for (i in seq_along(interes)) {
+  cat('Id == "', interes[i], '" ~ Id,\n', sep = "")
+}
+
+
+
+
+
+datos = datos |> 
+  dplyr::mutate(Id = dplyr::case_when(
+    Id == "13001_Colonia 28 De Mayo" ~ "13001_28 De Mayo (Santa Rosa) [Colonia]",
     Id == "13001_San Bartolo El Llano" ~ "13001_San Bartolo (El Llano)",
-    Id == "13001_Col. 28 De Mayo (Santa Rosa)" ~ "13001_28 de Mayo (Santa Rosa) [Colonia]",
+    Id == "13001_Col. 28 De Mayo (Santa Rosa)" ~ "13001_28 De Mayo (Santa Rosa) [Colonia]",
     Id == "13001_El Sabino" ~ "13001_El Sabino (La Barranca)",
     
     Id == "13002_Barrio Tlatzintla" ~ "13002_Tlatzintla",
     Id == "13002_Barrio Tlaltegco" ~ "13002_Tlaltegco (Venta Quemada)",
     Id == "13002_Apapaxtla El Grande" ~ "13002_Apapaxtla El Grande (Altamira)",
     Id == "13002_Tlamimolpan" ~ "13002_Tlamimilolpa",
+    
+    Id == "13003_Benito Juarez" ~ Id,              # No esta
+    Id == "13003_El Huaxto" ~ "13003_El Huaxtho",
+    Id == "13003_Agua Blanca De Iturbide" ~ Id,    # No esta
+    
+    Id == "13004_Ejido San Pedrito" ~ "13004_Ejido San Pedrito (Potrerillos)",
+    Id == "13004_Vicente Guerrero" ~ Id,       # No esta
+    Id == "13004_La Laguna" ~ Id,             #No esta
+    Id == "13004_El Remudadero" ~ Id,         # No esta
+    Id == "13004_Ajacuba" ~ Id,               # No esta(posible mal localizado)
+    
+    Id == "13005_San Francisco Sacachichilco" ~ Id,   #No esta(posible mal localizado)
+    Id == "13005_La Huapilla" ~ Id,        #No esta(posible mal localizado)
+    
+    Id == "13006_Almolaya" ~ Id,         #No esta(posible mal localizado)
+    
+    Id == "13007_Almolaya" ~ "13007_Almoloya",
+    Id == "13007_Apan" ~ Id,            #No esta(posible mal localizado)
+    
+    Id == "13008_Tezoyo" ~ Id,           #No esta
+    Id == "13008_Atlapexco" ~ Id,       #No esta(posible mal localizado)
+    Id == "13008_Tecolotitla" ~ Id,    #No esta(posible mal localizado)
+    
+    Id == "13010_San Geronimo Tlamaco" ~ "13010_Tlamaco (San Geronimo Tlamaco)",
+    Id == "13010_Tlaminulpa" ~ "13010_Tlalminulpa",
+    Id == "13010_San Jose Bojay El Grande" ~ "13010_Unidad Habitacional Antonio Osorio De Leon (Bojay)",  #Duda
+    Id == "13010_El Cardonal" ~ "13010_Cardonal",
+    Id == "13010_Tlamaco" ~ "13010_Tlamaco (San Geronimo Tlamaco)",
+    Id == "13010_San Jeronimo Tlamaco" ~ "13010_Tlamaco (San Geronimo Tlamaco)",
+    Id == "13010_Atitalaquia (El Tablon)" ~ "13010_Atitalaquia",
+    
+    Id == "13011_Santa Maria Amajac" ~ Id,    #No esta(posible mal localizado)
+    Id == "13011_Agua Limpia" ~ Id,           #No esta(posible mal localizado)
+    Id == "13011_Calnali" ~ Id,               #No esta(posible mal localizado)
+    Id == "13011_Tenexco 1" ~ "13011_Tenexco I",
+    Id == "13011_La Pena" ~ Id,               # No esta
+    Id == "13011_El Panteon" ~ Id,            # No esta
+    
+    Id == "13013_San Jose Bojay" ~ Id,        # No esta
+    
+    Id == "13012_Pozuelos" ~ Id,              #No esta(posible mal localizado)
+    Id == "13012_Los Banos De Santa Maria Amajac" ~ "13012_Santa Maria Amajac",
+    Id == "13012_Pezmatlan" ~ Id,             #No esta(posible mal localizado)
+    Id == "13012_El Paso De Amajac" ~ "13012_Paso De Amajac",
+    Id == "13012_Los Tapancos" ~ Id,          # No esta
+    Id == "13012_La Loma Del Zapote" ~ Id,    # No esta
+    
+    Id == "13014_San Antonio Sabanillas" ~ Id, #No esta(posible mal localizado)
+    Id == "13014_Texcaco" ~ Id,                #No esta
+    Id == "13014_Santa Maria Amealco" ~ Id,    #No esta(posible mal localizado) 
+    Id == "13014_San Andres" ~ "13014_San Andres (San Andres Chichayotla)",
+    Id == "13014_Chicuapa" ~ Id,              # No esta
+    Id == "13014_Texcaco (Sagrado Corazon De Jesus)" ~ Id,    #No esta
+    Id == "13014_Barrio San Juan Mezcalpa" ~ Id,   # No esta
+    Id == "13014_Barrio Nuevo" ~ Id,          # No esta
+    
+    Id == "13015_Emilio Hernandez La Florida" ~ "13015_La Florida", 
+    Id == "13015_Chapantongo" ~ Id,             #No esta(posible mal localizado) 
+    Id == "13015_El Cubo" ~ "13015_Manzana Del Cubo",
+    Id == "13015_Iglesia Vieja (Iglesia Nueva)" ~ Id, #No esta(posible mal localizado) 
+    
+    Id == "13017_La Estancia" ~ Id,   #No esta(posible mal localizado) 
+    Id == "13017_El Huizachal" ~ "13017_El Huizachal (San Isidro)",
+    Id == "13017_Neblinas" ~ Id, #No esta(posible mal localizado) 
+    
+    Id == "13018_El Sabino" ~ Id,   #No esta
+    Id == "13018_El Aguacate" ~ Id, #No esta
+    Id == "13018_Xayahualulco" ~ Id, #No esta(posible mal localizado) 
+    
+    Id == "13019_El Sabino" ~ Id,  # No esta
+    Id == "13019_San Juan Hueyapan" ~ Id, #No esta(posible mal localizado)
+    Id == "13019_El Dontzhi (Col. Alamos)" ~ "13019_El Dontzhi (Colonia Alamos)",
+    Id == "13019_Xayahualulco" ~ Id, #No esta(posible mal localizado)
+    Id == "13019_Dontzhi" ~ "13019_El Dontzhi (Colonia Alamos)",
+    Id == "13019_Tecaxtepec" ~ "13019_Texcatepec",
+    
+    Id == "13016_San Jeronimo" ~ Id,   # No esta
+    Id == "13016_Cuautepec De Hinojosa" ~ "13016_Cuautepec",
+    Id == "13016_Tanque Santa Maria Nativas" ~ "13016_Santa Maria Nativitas",
+    Id == "13016_San Pedro Gilo (Gilo)" ~ Id,  #No esta(posible mal localizado)
+    Id == "13016_El Bocja" ~ Id,           #No esta(posible mal localizado)
+    
+    Id == "13009_Col. 20 De Noviembre" ~ "13009_20 De Noviembre [Colonia]",
+    Id == "13009_Chimalpa" ~ Id,  #No esta(posible mal localizado)
+    Id == "13009_Colonia 20 De Mayo" ~ Id,    #No esta
+    Id == "13009_Tepatepec" ~ Id,   #No esta(posible mal localizado)
+    Id == "13009_Colonia 20 De Noviembre" ~ "13009_20 De Noviembre [Colonia]",
+    Id == "13009_Eloxochitlan" ~ Id,   #No esta
+    Id == "13009_Bocya" ~ Id,     #No esta
+    
+    Id == "13020_Almolaya" ~ Id,   #No esta
+    Id == "13020_San Pedro Gilo" ~ "13020_San Pedro Gilo (Gilo)",
+    Id == "13020_San Miguel Regla" ~ Id,    #No esta(posible mal localizado)
+    Id == "13020_La Loma" ~ Id,
+    Id == "13020_Almoloya" ~ Id,    #No esta
+    
+    Id == "13021_Jose Ma. Morelos" ~ "13021_Jose Maria Morelos (San Jose)",
+    
+    Id == "13022_San Miguel Nopala" ~ "13022_San Miguel Nopalapa",
+    
+    Id == "13023_El Quince" ~ Id,    #No esta
+    Id == "13023_Lazaro Cardenas (El Mexe)" ~ Id,  #No esta
+    Id == "13023_Los Cerezos" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13024_Huazalingo" ~ Id,  #No esta(posible mal localizado)
+    Id == "13024_Tamoyon I" ~ Id,  ##No esta(posible mal localizado)
+    
+    Id == "13025_Huazalingo" ~ Id,  #No esta(posible mal localizado)
+    Id == "13025_Barrio Hondo" ~ Id, #No esta
+    Id == "13025_Huehuetla" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13026_Huejutla De Reyes" ~ Id, #No esta(posible mal localizado)
+    Id == "13026_Huehuetla" ~ Id, #No esta(posible mal localizado)
+    
+    Id == "13027_La Esperanza" ~ "13027_La Esperanza Numero 1",
+    Id == "13027_Minas Viejas" ~ Id,  #No esta(posible mal localizado)
+    Id == "13027_Bosque" ~ Id,  #No esta
+    Id == "13027_Teacala" ~ Id,  #No esta
+    
+    Id == "13028_Chililico (Upn)" ~ "13028_Chililico",
+    Id == "13028_Huejutla" ~ "13028_Huejutla De Reyes",
+    Id == "13028_Tlahuatempa" ~ Id,  #No esta
+    Id == "13028_Tezohual" ~ Id,   # No esta
+    Id == "13028_Jaltocan" ~ Id, #No esta(posible mal localizado)
+    Id == "13028_Agua Fria Grande" ~ Id,   #No esta(posible mal localizado)
+    Id == "13028_Macuxtepleta" ~ "13028_Macuxtepetla",
+    
+    Id == "13030_Santa Ana" ~ Id,  #No esta
+    Id == "13030_Botanguedho" ~ "13030_Botenguedho",
+    Id == "13030_La Huerta" ~ "13030_La Huerta Capula",
+    Id == "13030_Barrio Fitzhi" ~ Id, # No esta
+    Id == "13030_Bangando" ~ "13030_Bangandho",
+    
+    Id == "13031_Juarez" ~ Id,     #No esta
+    Id == "13031_El Aguaje" ~ Id,  #No esta(posible mal localizado)
+    Id == "13031_Puerto De La Zorra" ~ Id,   # No esta
+    Id == "13031_El Cobre (Nicolas Flores)" ~ "13031_San Nicolas",
+    Id == "13031_Revolucion Mexicana" ~ Id,   #No esta
+    
+    Id == "13032_Juarez" ~ Id,         #No esta
+    Id == "13032_Puerto La Piedra" ~ Id,   # No esta
+    
+    Id == "13033_Lolotla" ~ Id,  #No esta(posible mal localizado)
+    Id == "13033_La Mision" ~ Id, #No esta
+    Id == "13033_Juarez" ~ "13033_Juarez Hidalgo",
+    
+    Id == "13040_Lagunita De Pilas" ~ "13040_Las Pilas",
+    Id == "13040_Barrio Santa Maria" ~ Id,    # No esta
+    Id == "13040_Los Castros" ~ Id,           # No esta
+    Id == "13040_Tetlapaya" ~ Id,             #No esta(posible mal localizado)
+    Id == "13040_Metepec" ~ Id,               #No esta
+    
+    Id == "13034_Metepec" ~ Id,               #No esta(posible mal localizado)
+    Id == "13034_Santiago Tezontlale" ~ Id,   #No esta(posible mal localizado)
+    Id == "13034_Itztazacuala" ~ Id,          #No esta(posible mal localizado)
+    Id == "13035_Pena Colorada" ~ Id,         #No esta
+    Id == "13035_Estacionde Apulco" ~ "13035_Estacion De Apulco",
+    Id == "13035_Carboneras" ~ Id,            #No esta
+    Id == "13035_Tecruz Copaza" ~ Id,         #No esta
+    
+    Id == "13037_Meztitlan" ~ "13037_Metztitlan",
+    Id == "13037_Mineral Del Chico" ~ Id,    #No esta(posible mal localizado)
+    Id == "13037_Colonia Tenhe" ~ Id,        #No esta(posible mal localizado)
+    Id == "13037_Tecruz Cosapa" ~ "13037_Tecruz Cozapa",        
+    Id == "13037_Pie De La Cuesta" ~ Id,     #No esta(posible mal localizado)
+    Id == "13037_Meztitln" ~ "13037_Metztitlan",
+    
+    Id == "13038_Manzanas Iii" ~ Id,         #No esta
+    Id == "13038_Plan Grande" ~ Id,          #No esta
+    Id == "13038_Colonia Tenhe" ~ Id,        #No esta(posible mal localizado)
+    Id == "13038_Carbonera" ~ "13038_Carboneras",
+    Id == "13038_El Durazno" ~ Id,           #No esta
+    Id == "13038_El Paraiso" ~ Id,           #No esta
+    
+    Id == "13039_Llano Grande" ~ Id,         #No esta
+    
+    Id == "13041_Cinta Larga Seccion 22" ~ Id,   #No esta
+    Id == "13041_Colonia El Tenhe" ~ "13041_Colonia Tenhe",
+    Id == "13041_Molango" ~ Id,              #No esta(posible mal localizado)
+    Id == "13041_Mixquiahuala" ~ "13041_Mixquiahuala De Juarez",          #Pendiente
+    Id == "13041_Mixquiahuala (Col. Taxhuada)" ~ Id,    #Pendiente
+    Id == "13041_Mixquiahuala  (La Pena)" ~ Id,         #Pendiente
+    Id == "13041_Mixquiahuala  (Donfhi)" ~ Id,          #Pendiente
+    Id == "13041_Colonia El Durazno" ~ "13041_El Durazno",
+    
+    Id == "13042_Molango" ~ "13042_Molango De Escamilla",
+    Id == "13042_Santa Cruz" ~ Id,          #No esta(posible mal localizado)
+    Id == "13042_Maravillas" ~ Id,          #No esta(posible mal localizado)
+    Id == "13042_El Dothu" ~ Id,            #No esta
+    
+    Id == "13043_Omitlan De Juarez" ~ Id,   #No esta(posible mal localizado)
+    Id == "13043_El Dathu" ~ Id,            #No esta
+    Id == "13043_Loma Del Progreso" ~ Id,   #No esta(posible mal localizado)
+    
+    Id == "13044_Canada" ~ "13044_La Canada",
+    Id == "13044_El Pedregoso" ~ Id,        #No esta(posible mal localizado)
+    Id == "13044_El Tecojote" ~ Id,         #No esta
+    Id == "13044_Pacula" ~ Id,              #No esta(posible mal localizado)
+    Id == "13044_Mizquiapan" ~ Id,          #No esta
+    Id == "13044_El Tejocote" ~ Id,         #No esta(posible mal localizado)
+    Id == "13044_El Sauz" ~ Id,             #No esta
+    Id == "13044_Ojo De Agua" ~ Id,         #No esta
+    
+    Id == "13045_Pisaflores" ~ Id,          #No esta(posible mal localizado)
+    Id == "13045_Canoas" ~ Id,              #No esta(posible mal localizado)
+     
+    Id == "13047_Metzquititlan" ~ Id,       #No esta
+    Id == "13047_Pisaflores" ~ Id,          #No esta(posible mal localizado)
+    Id == "13047_Vicente Guerrero" ~ "13047_Vicente Guerrero (Presidio)",
+    Id == "13047_Jilipan" ~ "13047_Jiliapan",
+    
+    Id == "13049_El Limonsito" ~ "13049_El Limoncito",
+    Id == "13049_San Bartolo Tutotepec" ~ Id,   #No esta
+    Id == "13049_Cieneguillas" ~ Id,            #No esta(posible mal localizado)
+    Id == "13049_Pisa Flores" ~ "13049_Pisaflores",
+    Id == "13049_Cerrito Del Carmen" ~ "13049_Cerro Del Carmen",
+    
+    Id == "13050_Progreso" ~ "13050_Progreso De Obregon",
+    Id == "13050_Col. Tenhe (Mixquiahuala)" ~ Id,   #No esta(posible mal localizado)
+    
+    Id == "13036_Orizatlan" ~ Id,          #No esta(posible mal localizado)
+    Id == "13036_Zahustipan" ~ "13036_Zahuastipan",
+    Id == "13036_San Agustin Metzquititlan" ~ "13036_Mezquititlan",
+    Id == "13036_Metzquititlan" ~ "13036_Mezquititlan",
+    Id == "13036_San Bartolo Tutotepec" ~ Id,   #No esta
+    Id == "13036_Metztquititlan" ~ "13036_Mezquititlan",
+    Id == "13036_San Juan Solis" ~ Id,   #No esta
+    Id == "13036_Ixcuinquilapilco" ~ Id, #No esta(posible mal localizado)
+    Id == "13036_San Bernardo" ~ Id,   #No esta
+    
+    Id == "13052_San Francisco Tecajite" ~ "13052_San Francisco Tecajique",
+    Id == "13052_San Agustin Tlaxiaca (Mexiquito)" ~ Id,           #Pendiente
+    Id == "13052_Rancho Los Garambullos" ~ Id,                     #No esta
+    Id == "13052_San Agustin Tlaxiaca (Barrio Casa Grande)" ~ Id,  #Pendiente
+    Id == "13052_Barrio El Tepozon" ~ Id,                          #No esta
+    Id == "13052_Guadalupe Victoria" ~ "13052_Guadalupe Victoria [Colonia]",
+    Id == "13052_Chapultepec De Pozo" ~ "13052_Chapultepec De Pozos",
+    Id == "13052_Colonia Nueva Tlaxiaca" ~ "13052_Nueva Tlaxiaca",
+    Id == "13052_Ixcuinquitlapico" ~ "13052_Ixcuinquitlapilco",
+    Id == "13052_San Agustin Tlaxiaca  (Barrio Casa Grande)" ~ Id, #Pendiente
+    
+    Id == "13053_San Salvador" ~ Id,    #No esta(posible mal localizado)
+    Id == "13053_Orizatlan" ~ Id,       #No esta
+    
+    Id == "13046_Orizatlan" ~ "13046_San Felipe Orizatlan",
+    Id == "13046_Acuapa" ~ Id,             # No esta
+    Id == "13046_San Salvador" ~ Id,       # No esta
+    Id == "13046_Pacheco De Allende" ~ Id,  #No esta(posible mal localizado)
+    Id == "13046_Manzanas Iii" ~ Id,       # No esta
+    
+    Id == "13054_El Puerto Lazaro Cardenaz" ~ "13054_El Puerto Lazaro Cardenas",
+    Id == "13054_Pacheco" ~ "13054_Pacheco De Allende",
+    Id == "13054_El Bandho" ~ "13054_El Bondho",
+    Id == "13054_Teofni" ~ "13054_Teofani",
+    Id == "13054_Yolotepec" ~ Id,   #No esta(posible mal localizado)
+    Id == "13054_Zaragoza" ~ "13054_San Antonio Zaragoza",
+    Id == "13054_Puerto El Lazaro Cardenas" ~ "13054_El Puerto Lazaro Cardenas",
+    Id == "13054_Ventoquipa" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13055_La Blanca" ~ "13055_La Blanca (Taxtho La Blanca)",
+    Id == "13055_Palmar" ~ "13055_El Palmar",
+    Id == "13055_Portezuelo" ~ Id,           # No esta
+    Id == "13055_La Joya (Fraccionamiento)" ~ Id,   #No esta
+    
+    Id == "13056_Potrerillos" ~ Id, #No esta
+    Id == "13056_La Viejita" ~ Id,  #No esta
+    Id == "13056_Tasquillo" ~ Id,   #No esta(posible mal localizado)
+    Id == "13056_Plan De Ayala" ~ Id, #No esta(posible mal localizado)
+    
+    Id == "13057_Susto" ~ "13057_El Susto",
+    
+    Id == "13058_El Bondhi" ~ "13058_Bondhi",
+    Id == "13058_Tenango De Doria" ~ Id,  #No esta(posible mal localizado)
+    Id == "13058_Frente Al Vivero" ~ Id,  #No esta
+    
+    Id == "13059_Col. 20 De Noviembre" ~ Id,  #No esta(posible mal localizado)
+    Id == "13059_Barrio Morales" ~ Id,  #No esta
+    Id == "13059_Ejido Tagui 3 (Localidad)" ~ Id,  #No esta
+    Id == "13059_Rancho Pathesito" ~ Id,  #No esta
+    
+    Id == "13060_Acatlajapa" ~ Id,   #No esta(posible mal localizado)
+    Id == "13060_La Cuarta Manzana" ~ Id, #No esta(posible mal localizado)
+    Id == "13060_Amola De Ocampo" ~ Id,   #No esta
+    
+    Id == "13061_Fco. Sarabia (Corralillos)" ~ "13061_Francisco Sarabia (Corralillos)",
+    Id == "13061_La Estacion Ocho" ~ Id,  #No esta
+    
+    Id == "13062_Xilipa" ~ "13062_Xilitla",
+    Id == "13062_Manantiales De Cerro Colorado" ~ Id,   #No esta(posible mal localizado)
+    Id == "13062_La Ermita" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13063_Tepeji Del Rio" ~ "13063_Tepeji Del Rio De Ocampo",
+    Id == "13063_Localidad El Eden" ~ Id,   #No esta
+    Id == "13063_Tianguistengo" ~ "13063_Tianguistengo (La Romera)",
+    Id == "13063_Col. Sta Maria Quelites" ~ "13063_Santa Maria Quelites",
+    
+    Id == "13064_Tianguistengo" ~ Id,   #No esta
+    
+    Id == "13067_Colonia San Juan Solis" ~ "13067_San Juan [Colonia]",
+    Id == "13067_San Juan (Colonia)" ~ "13067_San Juan [Colonia]",
+    Id == "13067_Tlahuelilpan" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13068_Las Cantinas" ~ Id,     #No esta
+    Id == "13068_San Jose Las Cruces" ~ Id, #No esta
+    Id == "13068_Tlahuelilpan" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13070_Tlahuiltepa" ~ Id,   #No esta(posible mal localizado)
+    Id == "13070_Col. Cerro De La Cruz" ~ "13070_Cerro De La Cruz [Colonia]",
+    Id == "13070_Tlanchinol" ~ Id,  #No esta(posible mal localizado)
+    Id == "13070_Colonia Cerro De La Cruz" ~ "13070_Cerro De La Cruz [Colonia]",
+    
+    Id == "13071_Tlanchinol" ~ Id,  #No esta(posible mal localizado)
+    Id == "13071_Tulancingo" ~ Id,  #No esta(posible mal localizado)
+     
+    Id == "13073_Tanchinol" ~ "13073_Tlanchinol",
+    Id == "13073_Atlalco" ~ Id,     #No esta(posible mal localizado)
+    Id == "13073_Tulancingo" ~ Id,  #No esta(posible mal localizado)
+    
+    Id == "13074_Teltipan" ~ "13074_Teltipan De Juarez",
+    
+    Id == "13076_San Miguel Las Piedras (1ra Seccion)" ~ "13076_San Miguel De Las Piedras Primera Seccion",
+    Id == "13076_Santa Ana Ahuehupan" ~ "13076_Santa Ana Ahuehuepan",
+    
+    Id == "13077_Tepaltzingo" ~ "13077_Tepalzingo",
+    Id == "13077_Tulancingo De Bravo" ~ "13077_Tulancingo",
+    Id == "13077_Xochitl" ~ Id,      #No esta(posible mal localizado)
+    Id == "13077_Xochicoatlan" ~ Id, #No esta(posible mal localizado)
+    
+    Id == "13066_Villa De Tezontepec" ~ "13066_Tezontepec",
+    
+    Id == "13078_Xochicoatlan" ~ Id,   #No esta(posible mal localizado)
+    Id == "13078_Santa Teresa" ~ Id,   #No esta(posible mal localizado)
+    Id == "13078_Huitznopala" ~ Id,    #No esta(posible mal localizado)
+    
+    Id == "13079_Chacalapa" ~ Id,    #No esta
+    Id == "13079_Zacualtipan" ~ Id,  #No esta(posible mal localizado)
+     
+    Id == "13080_Xindho San Pedro" ~ Id,  #No esta
+    Id == "13080_Tepeyocatitla" ~ "13080_Pepeyocatitla",
+    Id == "13080_Huetacetl" ~ Id,     #No esta
+    
+    Id == "13081_Doxhi" ~ Id,     #No esta(posible mal localizado)
+    
+    Id == "13084_Doxhi" ~ "13084_Doxthi La Sabina (La Sabina)",
+    Id == "13084_Bonhu" ~ Id,    #No esta
+    Id == "13084_Coaxithi" ~ Id,   #No esta(posible mal localizado)
+    Id == "13084_Lazaro Cardenas" ~ "13084_Lazaro Cardenas (Remedios)",
     TRUE ~ Id
   ))
 
 
 
+loc_filtrado = loc |> 
+  dplyr::group_by(Id) |> 
+  dplyr::filter(dplyr::n()>1)
 
-write.csv(loc,"app/assets/Datos/Localidad_basarse.csv", row.names = F, fileEncoding = "latin1")
+plot(loc_filtrado$geometry)
+
+unicos = datos$Id |>  unique()
+unicos[which(!unicos %in% loc$Id)]
+
+
+names(loc)[1:2] = c("CVEGEO_LOC", "NOMGEO_LOC")
+
+loc = loc |>  dplyr::select(CVEGEO_LOC,NOMGEO_LOC,Id,geometry)
+
+datos_merge = merge(x = datos, y = loc, by = "Id", all.x = T)
+
+####################################
+### El repetido es 13035_Metepec ###
+####################################
+
+# Ordenar base bonito
+
+datos = datos_merge
+datos = datos |> 
+  dplyr::filter(sf::st_is_empty(geometry)) |> 
+  dplyr::select(-Id) |> 
+  dplyr::mutate(Id = paste0(NOM_MUN, "_", Localidad))
+
+
+localidades_2 = sf::read_sf("../../Importantes_documentos_usar/Localidades/shp2/13lpr.shp", options = "ENCODING=LATIN1")
+localidades_2 = localidades_2 |> 
+  dplyr::select(CVEGEO, NOMGEO) |> 
+  dplyr::mutate(NOMGEO_L = stringr::str_to_title(NOMGEO),
+                NOMGEO_L = iconv(x = NOMGEO_L, from = "UTF-8", to = "ASCII//TRANSLIT"),
+                NOMGEO_L = stringr::str_trim(NOMGEO_L)
+  ) |> 
+  dplyr::mutate(CVE_MUN = substr(x = CVEGEO, start = 3, stop = 5)) 
+
+
+mun = sf::read_sf("../../Importantes_documentos_usar/Municipios/municipiosjair.shp")
+mun = mun |>  dplyr::select(CVE_MUN,NOM_MUN) |>  sf::st_drop_geometry()
+
+localidades_2 = merge(x = localidades_2, y = mun, by = "CVE_MUN")
+localidades_2 = localidades_2 |> 
+  dplyr::mutate(Id = paste0(NOM_MUN, "_", NOMGEO_L))
+
+
+
+
+
+
+
+
+library(fuzzyjoin);
+library(dplyr);
+interes = datos |>  dplyr::select(Id, Año) |> sf::st_drop_geometry()
+prueba = stringdist_join(interes, localidades_2 |>  dplyr::select(Id,CVEGEO), 
+                by = "Id",
+                mode = "left",
+                ignore_case = FALSE, 
+                method = "jw", 
+                max_dist = 99, 
+                distance_col = "dist")  |> 
+  group_by(Id.x)  |> 
+  slice_min(order_by = dist, n = 1) 
+
+
+
+
