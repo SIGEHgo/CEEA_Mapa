@@ -154,8 +154,12 @@ colnames(mun)[1] = "CVEGEO_MUN"
 
 datos = merge(x = datos, y = mun, by = "Municipio", all.x = T)
 
+###########################
+### Localidades Urbanas ###
+###########################
 
 loc = sf::read_sf("../../Importantes_documentos_usar/Localidades/shp1/13l.shp")
+loc = loc[-which(loc$CVEGEO == 130350034),]  # Para evitar error de repetido es 13035_Metepec
 loc = loc |>  
   dplyr::select(CVEGEO, NOMGEO) |> 
   dplyr::mutate(Localidad = NOMGEO,
@@ -166,6 +170,10 @@ loc = loc |>
   ) 
 
 
+
+
+
+
 datos = datos |> 
   dplyr::mutate(Localidad = stringr::str_to_title(Localidad),
                 Localidad = iconv(x = Localidad, from = "UTF-8", to = "ASCII//TRANSLIT"),
@@ -174,7 +182,6 @@ datos = datos |>
 
 unicos = datos$Id |>  unique()
 unicos[which(!unicos %in% loc$Id)]
-
 
 
 interes = unicos[which(!unicos %in% loc$Id)] 
@@ -553,7 +560,6 @@ loc_filtrado = loc |>
   dplyr::group_by(Id) |> 
   dplyr::filter(dplyr::n()>1)
 
-plot(loc_filtrado$geometry)
 
 unicos = datos$Id |>  unique()
 unicos[which(!unicos %in% loc$Id)]
@@ -565,17 +571,43 @@ loc = loc |>  dplyr::select(CVEGEO_LOC,NOMGEO_LOC,Id,geometry)
 
 datos_merge = merge(x = datos, y = loc, by = "Id", all.x = T)
 
+datos_merge = datos_merge |>  
+  dplyr::select(Año,NOM_MUN,CVEGEO_LOC,NOMGEO_LOC, Localidad, `Fuente de Abastecimiento`:`Temperatura 
+°C`) |>  
+  dplyr::arrange(Año,NOM_MUN)
+
+write.csv(datos_merge, "app/assets/Datos/DATOS_2012_2023_Localidades_Urbanas_Correctas.csv",row.names = F, fileEncoding = "latin1")
+# Para geometria unir desde loc con geo apartir de CVEGEO_LOC
 ####################################
 ### El repetido es 13035_Metepec ###
 ####################################
 
-# Ordenar base bonito
 
-datos = datos_merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###########################
+### Localidades Rurales ###
+###########################
+
+datos = read.csv("app/assets/Datos/DATOS_2012_2023_Localidades_Urbanas_Correctas.csv", fileEncoding = "latin1")
 datos = datos |> 
-  dplyr::filter(sf::st_is_empty(geometry)) |> 
-  dplyr::select(-Id) |> 
-  dplyr::mutate(Id = paste0(NOM_MUN, "_", Localidad))
+  dplyr::filter(is.na(CVEGEO_LOC)) |> 
+  dplyr::mutate(Id = paste0(NOM_MUN, "_", Localidad)) |> 
+  dplyr::select(-CVEGEO_LOC,-NOMGEO_LOC)
 
 
 localidades_2 = sf::read_sf("../../Importantes_documentos_usar/Localidades/shp2/13lpr.shp", options = "ENCODING=LATIN1")
@@ -593,18 +625,15 @@ mun = mun |>  dplyr::select(CVE_MUN,NOM_MUN) |>  sf::st_drop_geometry()
 
 localidades_2 = merge(x = localidades_2, y = mun, by = "CVE_MUN")
 localidades_2 = localidades_2 |> 
-  dplyr::mutate(Id = paste0(NOM_MUN, "_", NOMGEO_L))
-
-
-
-
+  dplyr::mutate(Id = paste0(NOM_MUN, "_", NOMGEO_L)) |> 
+  sf::st_drop_geometry()
 
 
 
 
 library(fuzzyjoin);
 library(dplyr);
-interes = datos |>  dplyr::select(Id, Año) |> sf::st_drop_geometry()
+interes = datos |>  dplyr::select(Id) 
 prueba = stringdist_join(interes, localidades_2 |>  dplyr::select(Id,CVEGEO), 
                 by = "Id",
                 mode = "left",
@@ -613,8 +642,249 @@ prueba = stringdist_join(interes, localidades_2 |>  dplyr::select(Id,CVEGEO),
                 max_dist = 99, 
                 distance_col = "dist")  |> 
   group_by(Id.x)  |> 
-  slice_min(order_by = dist, n = 1) 
+  slice_min(order_by = dist, n = 1) |> 
+  dplyr::filter(dist > 0) |>  
+  dplyr::arrange(dist)
+
+# Correctamente escrita es la Id.y, dado que la original es Id.x
 
 
 
+
+
+
+unicos = datos$Id |>  unique()
+unicos[which(!unicos %in% localidades_2$Id)]
+
+interes = unicos[which(!unicos %in% localidades_2$Id)] 
+for (i in seq_along(interes)) {
+  cat('Id == "', interes[i], '" ~ Id,\n', sep = "")
+}
+
+
+for (i in 1:nrow(prueba)) {
+  cat('Id == "', prueba$Id.x[i], '" ~ Id,\n', sep = "")
+}
+
+write.csv(prueba, "app/assets/Datos/Localidad_Rural_basarse.csv", row.names = F, fileEncoding = "latin1")
+# Correctamente escrita es la Id.y, dado que la original es Id.x
+
+datos = datos  |> 
+  dplyr::mutate(Id = dplyr::case_when(
+    Id == "Nopala de Villagrán_El Tecojote" ~ "Nopala de Villagrán_El Tejocote",
+    Id == "Nicolás Flores_El Dathu" ~ "Nicolás Flores_El Dothu",
+    Id == "San Felipe Orizatlán_Acuapa" ~ Id,
+    Id == "Yahualica_Huetacetl" ~ "Yahualica_Hueyactetl",
+    Id == "Calnali_Texcaco" ~ Id,                                     # Si existe en google
+    Id == "Eloxochitlán_Almolaya" ~ "Eloxochitlán Almoloya", 
+    Id == "Huehuetla_Bosque" ~ "Huehuetla_El Bosque",
+    Id == "Tianguistengo_Tlahuelilpan" ~ "Tianguistengo_Tlahuiltepa",
+    Id == "Nopala de Villagrán_Pacula" ~ Id,                          # Pendiente
+    Id == "Molango de Escamilla_Maravillas" ~ Id,
+    Id == "Santiago Tulantepec de Lugo Guerrero_La Viejita" ~ Id,     
+    Id == "Francisco I. Madero_Lazaro Cardenas (El Mexe)" ~ "Francisco I. Madero_Lazaro Cardenas (El Mexe) [Colonia]",
+    Id == "Huautla_Huazalingo" ~ Id,                                 #Duda
+    Id == "El Arenal_Chimalpa" ~ "El Arenal_Chimilpa",
+    Id == "Xochiatipan_Xochicoatlan" ~ Id,
+    Id == "Apan_Tezoyo" ~ "Apan_El Tezoyo",
+    Id == "Atotonilco el Grande_Los Tapancos" ~ Id,
+    Id == "Tepehuacán de Guerrero_La Ermita" ~ Id,
+    Id == "Huejutla de Reyes_Jaltocan" ~ Id,
+    Id == "Santiago Tulantepec de Lugo Guerrero_Tasquillo" ~ Id,
+    Id == "Santiago Tulantepec de Lugo Guerrero_Plan De Ayala" ~ Id,
+    Id == "Santiago Tulantepec de Lugo Guerrero_Plan De Ayala" ~ Id,
+    Id == "Cuautepec de Hinojosa_El Bocja" ~ Id,
+    Id == "San Felipe Orizatlán_San Salvador" ~ Id,
+    Id == "Xochicoatlán_Zacualtipan" ~ Id,
+    Id == "Francisco I. Madero_Los Cerezos" ~ Id,
+    Id == "Santiago Tulantepec de Lugo Guerrero_Potrerillos" ~ Id,
+    Id == "San Agustín Metzquititlán_San Bernardo" ~ Id,
+    Id == "Molango de Escamilla_Santa Cruz" ~ Id,
+    Id == "San Agustín Metzquititlán_San Juan Solis" ~ Id,
+    Id == "San Bartolo Tutotepec_Orizatlan" ~ Id,
+    Id == "Zacualtipán de Ángeles_Doxhi" ~ Id,
+    Id == "San Bartolo Tutotepec_San Salvador" ~ Id,
+    Id == "Cardonal_Iglesia Vieja (Iglesia Nueva)" ~ Id,
+    Id == "Huejutla de Reyes_Tlahuatempa" ~ Id,
+    Id == "El Arenal_Bocya" ~ "El Arenal_El Bocja",
+    Id == "Tlahuiltepa_Tulancingo" ~ Id,
+    Id == "San Agustín Metzquititlán_Ixcuinquilapilco" ~ Id,
+    Id == "Atotonilco el Grande_Pozuelos" ~ Id,
+    Id == "Atlapexco_La Pena" ~ Id,
+    Id == "Cuautepec de Hinojosa_San Jeronimo" ~ Id,
+    Id == "Cuautepec de Hinojosa_San Jeronimo" ~ Id,
+    Id == "Mixquiahuala de Juárez_Molango" ~ Id,
+    Id == "Mixquiahuala de Juárez_Molango" ~ Id,
+    Id == "Mixquiahuala de Juárez_Molango" ~ Id,
+    Id == "Mixquiahuala de Juárez_Molango" ~ Id,
+    Id == "Mixquiahuala de Juárez_Molango" ~ Id,
+    Id == "Mixquiahuala de Juárez_Molango" ~ Id,
+    Id == "San Agustín Metzquititlán_Orizatlan" ~ Id,
+    Id == "Mineral del Chico_El Paraiso" ~ Id,
+    Id == "Tlanchinol_Atlalco" ~ Id,
+    Id == "Francisco I. Madero_El Quince" ~ Id,
+    Id == "Molango de Escamilla_El Dothu" ~ Id,
+    Id == "Tlanchinol_Tulancingo" ~ Id,
+    Id == "San Agustín Tlaxiaca_Barrio El Tepozon" ~ "San Agustín Tlaxiaca_El Tepozan",
+    Id == "San Agustín Tlaxiaca_Rancho Los Garambullos" ~ "San Agustín Tlaxiaca_Los Garambullos",
+    Id == "Atotonilco de Tula_San Jose Bojay" ~ Id,
+    Id == "Tlahuiltepa_Tlanchinol" ~ Id,
+    Id == "Santiago de Anaya_Portezuelo" ~ Id,
+    Id == "Calnali_San Antonio Sabanillas" ~ Id,
+    Id == "Atotonilco el Grande_Pezmatlan" ~ Id,
+    Id == "Mineral del Chico_El Durazno" ~ Id,
+    Id == "Tulancingo de Bravo_Xochitl" ~ Id,
+    Id == "Tulancingo de Bravo_Xochitl" ~ Id,
+    Id == "Mineral del Chico_Manzanas Iii" ~ "Mineral del Chico_Las Manzanas",
+    Id == "Mineral del Chico_Manzanas Iii" ~ "Mineral del Chico_Las Manzanas",
+    Id == "Mineral del Chico_Manzanas Iii" ~ "Mineral del Chico_Las Manzanas",
+    Id == "Mineral del Chico_Manzanas Iii" ~ "Mineral del Chico_Las Manzanas",
+    Id == "Omitlán de Juárez_Canoas" ~ Id,
+    Id == "Agua Blanca de Iturbide_Ajacuba" ~ Id,
+    Id == "Huautla_Huehuetla" ~ Id,
+    Id == "Tulancingo de Bravo_Xochicoatlan" ~ Id,
+    Id == "San Felipe Orizatlán_Manzanas Iii" ~ Id,
+    Id == "Nopala de Villagrán_Mizquiapan" ~ Id,
+    Id == "Huasca de Ocampo_Tamoyon I" ~ Id,
+    Id == "Jacala de Ledezma_Juarez" ~ Id,
+    Id == "Mineral del Chico_Plan Grande" ~ Id,
+    Id == "Tecozautla_Rancho Pathesito" ~ Id,
+    Id == "Omitlán de Juárez_Pisaflores" ~ Id,
+    Id == "Tepeji del Río de Ocampo_Localidad El Eden" ~ Id,
+    Id == "Tepeji del Río de Ocampo_Localidad El Eden" ~ Id,
+    Id == "Xochicoatlán_Chacalapa" ~ Id,
+    Id == "Eloxochitlán_La Loma" ~ Id,
+    Id == "Pisaflores_Cieneguillas" ~ Id,
+    Id == "Xochiatipan_Huitznopala" ~ Id,
+    Id == "Metztitlán_Colonia Tenhe" ~ Id,
+    Id == "San Agustín Metzquititlán_San Bartolo Tutotepec" ~ Id,
+    Id == "Ixmiquilpan_Santa Ana" ~ Id,
+    Id == "Huasca de Ocampo_Huazalingo" ~ Id,
+    Id == "Chapulhuacán_Xayahualulco" ~ Id,
+    Id == "Chilcuautla_Xayahualulco" ~ Id,
+    Id == "Nicolás Flores_Omitlan De Juarez" ~ Id,
+    Id == "Tezontepec de Aldama_Tlahuelilpan" ~ Id,
+    Id == "Lolotla_Metepec" ~ Id,
+    Id == "Atlapexco_El Panteon" ~ Id,
+    Id == "Calnali_Barrio Nuevo" ~ Id,
+    Id == "Tianguistengo_Las Cantinas" ~ Id,
+    Id == "Lolotla_Santiago Tezontlale" ~ Id,
+    Id == "Juárez Hidalgo_Lolotla" ~ Id,
+    Id == "Lolotla_Itztazacuala" ~ Id,
+    Id == "Tenango de Doria_Acatlajapa" ~ Id,
+    Id == "Huejutla de Reyes_Agua Fria Grande" ~ Id,
+    Id == "Huehuetla_Teacala" ~ Id,
+    Id == "San Felipe Orizatlán_Pacheco De Allende" ~ Id,
+    Id == "Alfajayucan_Almolaya" ~ Id,
+    Id == "Alfajayucan_Almolaya" ~ Id,
+    Id == "Chapantongo_Neblinas" ~ Id,
+    Id == "San Salvador_Ventoquipa" ~ Id,
+    Id == "Cuautepec de Hinojosa_San Pedro Gilo (Gilo)" ~ Id,
+    Id == "Cuautepec de Hinojosa_San Pedro Gilo (Gilo)" ~ Id,
+    Id == "Tenango de Doria_Amola De Ocampo" ~ Id,
+    Id == "Xochiatipan_Santa Teresa" ~ Id,
+    Id == "Tlahuelilpan_Tlahuiltepa" ~ Id,
+    Id == "Agua Blanca de Iturbide_Vicente Guerrero" ~ Id,
+    Id == "San Agustín Tlaxiaca_San Agustin Tlaxiaca (Mexiquito)" ~ Id,
+    Id == "San Agustín Tlaxiaca_San Agustin Tlaxiaca (Mexiquito)" ~ Id,
+    Id == "San Agustín Tlaxiaca_San Agustin Tlaxiaca (Mexiquito)" ~ Id,
+    Id == "San Agustín Tlaxiaca_San Agustin Tlaxiaca (Mexiquito)" ~ Id,
+    Id == "Almoloya_Apan" ~ Id,
+    Id == "Almoloya_Apan" ~ Id,
+    Id == "Tenango de Doria_La Cuarta Manzana" ~ Id,
+    Id == "Mineral del Chico_Colonia Tenhe" ~ Id,
+    Id == "Atlapexco_Santa Maria Amajac" ~ Id,
+    Id == "Atlapexco_Calnali" ~ Id,
+    Id == "Ixmiquilpan_Barrio Fitzhi" ~ Id,
+    Id == "La Misión_Tetlapaya" ~ Id,
+    Id == "Jacala de Ledezma_Revolucion Mexicana" ~ Id,
+    Id == "Nicolás Flores_Loma Del Progreso" ~ Id,
+    Id == "La Misión_Metepec" ~ Id,
+    Id == "San Salvador_Yolotepec" ~ Id,
+    Id == "Eloxochitlán_San Miguel Regla" ~ Id,
+    Id == "Calnali_Santa Maria Amealco" ~ Id,
+    Id == "Huazalingo_Huehuetla" ~ Id,
+    Id == "El Arenal_Eloxochitlan" ~ Id,
+    Id == "Huehuetla_Minas Viejas" ~ Id,
+    Id == "Cardonal_Chapantongo" ~ Id,
+    Id == "Ajacuba_San Francisco Sacachichilco" ~ Id,
+    Id == "Atlapexco_Agua Limpia" ~ Id,
+    Id == "Juárez Hidalgo_La Mision" ~ Id,
+    Id == "Tepehuacán de Guerrero_Manantiales De Cerro Colorado" ~ Id,
+    Id == "Mixquiahuala de Juárez_Mixquiahuala  (Donfhi)" ~ Id,
+    Id == "Mixquiahuala de Juárez_Mixquiahuala  (La Pena)" ~ Id,
+    Id == "Tecozautla_Barrio Morales" ~ Id,
+    Id == "Ajacuba_La Huapilla" ~ Id,
+    Id == "Jaltocán_Juarez" ~ Id,
+    Id == "Mixquiahuala de Juárez_Mixquiahuala (Col. Taxhuada)" ~ Id,
+    Id == "Metztitlán_Mineral Del Chico" ~ Id,
+    Id == "Tlahuelilpan_Tlanchinol" ~ Id,
+    Id == "Pacula_Metzquititlan" ~ Id,
+    Id == "Santiago de Anaya_La Joya (Fraccionamiento)" ~ Id,
+    Id == "Progreso de Obregón_Col. Tenhe (Mixquiahuala)" ~ Id,
+    Id == "Progreso de Obregón_Col. Tenhe (Mixquiahuala)" ~ Id,
+    Id == "Tianguistengo_San Jose Las Cruces" ~ Id,
+    Id == "Jaltocán_Puerto La Piedra" ~ Id,
+    Id == "San Agustín Tlaxiaca_San Agustin Tlaxiaca (Barrio Casa Grande)" ~ Id,
+    Id == "Chilcuautla_San Juan Hueyapan" ~ Id,
+    Id == "San Agustín Tlaxiaca_San Agustin Tlaxiaca  (Barrio Casa Grande)" ~ Id,
+    Id == "Tepetitlán_Tianguistengo" ~ Id,
+    Id == "Tepetitlán_Tianguistengo" ~ Id,
+    Id == "Metepec_Carboneras" ~ Id,
+    Id == "Tecozautla_Col. 20 De Noviembre" ~ Id,
+    Id == "Pacula_Pisaflores" ~ Id,
+    Id == "Pisaflores_San Bartolo Tutotepec" ~ Id,
+    Id == "Calnali_Barrio San Juan Mezcalpa" ~ Id,
+    Id == "La Misión_Barrio Santa Maria" ~ Id,
+    Id == "El Arenal_Tepatepec" ~ Id,
+    Id == "Apan_Tecolotitla" ~ Id,
+    Id == "Metepec_Tecruz Copaza" ~ Id,
+    Id == "Tasquillo_Tenango De Doria" ~ Id,
+    Id == "Tasquillo_Tenango De Doria" ~ Id,
+    Id == "El Arenal_Colonia 20 De Mayo" ~ Id,
+    Id == "Apan_Atlapexco" ~ Id,
+    Id == "Tecozautla_Ejido Tagui 3 (Localidad)" ~ Id,
+    Id == "Yahualica_Xindho San Pedro" ~ Id,
+    Id == "Yahualica_Xindho San Pedro" ~ Id,
+    Id == "Yahualica_Xindho San Pedro" ~ Id,
+    Id == "Yahualica_Xindho San Pedro" ~ Id,
+    Id == "Huazalingo_Huejutla De Reyes" ~ Id,
+    Id == "Actopan_Agua Blanca De Iturbide" ~ Id,
+    Id == "Actopan_Agua Blanca De Iturbide" ~ Id,
+    TRUE ~ Id
+  ))
+
+checar_repetidos = localidades_2 |> 
+  dplyr::group_by(Id) |> 
+  dplyr::filter(dplyr::n()>1)
+
+which(checar_repetidos$Id %in% datos$Id)
+
+repetidos = checar_repetidos[which(checar_repetidos$Id %in% datos$Id),]
+
+localidades_2 = localidades_2 |> dplyr::select(Id,CVEGEO,NOMGEO)
+c("1303701220012800", "1303701230046800")
+quitar = which(localidades_2$CVEGEO %in% c("1303701220012800", "1303701230046800"))
+localidades_2 = localidades_2[-quitar,]
+names(localidades_2)[c(2,3)] = c("CVEGEO_LOC","NOMGEO_LOC")
+
+
+datos_merge = merge(x = datos, y = localidades_2, by = "Id", all.x = T)
+
+
+datos_merge = datos_merge |>  
+  dplyr::select(Año, NOM_MUN,CVEGEO_LOC,NOMGEO_LOC,Localidad,Fuente.de.Abastecimiento:Temperatura...C) |> 
+  dplyr::arrange(Año,NOM_MUN)
+
+write.csv(datos_merge, "app/assets/Datos/DATOS_2012_2023_Localidades_Rurales_Correctas_Faltantes.csv", fileEncoding = "latin1", row.names = F)
+
+
+
+faltantes = read.csv("app/assets/Datos/DATOS_2012_2023_Localidades_Rurales_Correctas_Faltantes.csv", fileEncoding = "latin1")
+faltantes = faltantes |> 
+  dplyr::filter(is.na(CVEGEO_LOC)) |> 
+  dplyr::select(-CVEGEO_LOC, -NOMGEO_LOC)
+
+
+write.csv(faltantes, "app/assets/Datos/Faltantes.csv", fileEncoding = "latin1", row.names = F)
 
