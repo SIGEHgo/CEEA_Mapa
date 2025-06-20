@@ -81,10 +81,9 @@ datos[datos == "ND"] = NA   #Sacar error por las geometrias
 datos[datos == "NR"] = NA   #Sacar error por las geometrias
 
 datos = datos |> 
-  mutate(across(where(is.character), ~na_if(., "ND")),
-         across(where(is.character), ~na_if(., "NR"))) |>  
+  dplyr::mutate(dplyr::across(dplyr::where(is.character), ~ dplyr::na_if(., "ND")),
+         across(dplyr::where(is.character), ~dplyr::na_if(., "NR"))) |>  
   dplyr::arrange(Año,NOM_MUN)
-
 
 
 
@@ -115,8 +114,9 @@ mapa_web = leaflet() |>
                             ))
 mapa_web  
 
-
-### Markers
+###############
+### Markers ###
+###############
 datos_mapa = datos |>  sf::st_centroid(datos)
 
 datos_mapa = datos_mapa |> 
@@ -225,3 +225,561 @@ for (x in seq_along(columnas_interes)) {
 mapa_web=mapa_web |> 
   addLayersControl(baseGroups = columnas_interes)
 mapa_web
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################################################
+### Mapa web segunda forma(mas rapido eficiente) ###
+####################################################
+
+datos_mapa = datos |>  sf::st_centroid(datos)
+names(datos_mapa)[1:(ncol(datos_mapa) - 1)]
+
+columnas_nombres = c(
+  "CVEGEO_LOC",
+  "AÑO",
+  "NOM_MUN",
+  "NOMGEO_LOC",
+  "LOC",
+  "f_abast",   # Fuente de abastecimiento
+  "coli_total",
+  "e_coli",
+  "as",        # Arsénico
+  "ba",        # Bario
+  "cd",        # Cadmio
+  "cu",        # Cobre
+  "fe",        # Hierro
+  "mn",        # Manganeso
+  "pb",        # Plomo
+  "zn",        # Zinc
+  "cn",        # Cianuros
+  "cl_res",    # Cloro residual
+  "cl",        # Cloruros
+  "dur",       # Dureza total
+  "flu",       # Fluoruros
+  "no3",       # Nitratos
+  "no2",       # Nitritos
+  "ph",        # pH
+  "sdt",       # Sólidos disueltos totales
+  "so4",       # Sulfatos
+  "cl_tot",    # Cloro total
+  "cond",      # Conductividad
+  "temp"       # Temperatura
+)
+
+names(datos_mapa)[1:(ncol(datos_mapa) - 1)] = columnas_nombres
+names(datos_mapa)
+
+# Preguntar por los NA que avisa
+datos_mapa = datos_mapa |> 
+  dplyr::mutate(dplyr::across(9:29, as.numeric))
+
+datos_mapa = sf::st_transform(datos_mapa, crs = "WGS84")
+
+# Colores
+getColor = function(columna) {
+  sapply(columna, function(x) {
+    if (is.na(x)) {
+      "gray"
+    } else if (x == 0) {
+      "green"
+    } else if (x > 0 && x <= 0.1) {
+      "orange"
+    } else if (x > 0.1) {
+      "red"
+    } else {
+      "gray"
+    }
+  })
+}
+
+library(leaflet)
+
+mapa_web = leaflet() |> 
+  addTiles()
+
+columnas_interes = names(datos_mapa)[9:29]
+
+
+for (x in seq_along(columnas_interes)) {
+  col_actual = columnas_interes[x]
+  print(col_actual)
+  
+  colores = getColor(datos_mapa[[col_actual]])
+  
+  icons = awesomeIcons(
+    icon = 'ios-close',
+    iconColor = 'black',
+    library = 'ion',
+    markerColor = colores
+  )
+  
+  mapa_web = mapa_web  |> 
+    addAwesomeMarkers(
+      data = datos_mapa,
+      label = datos_mapa$f_abast,
+      popup = paste(
+        "Municipio:", "<b>", datos_mapa$NOM_MUN, "</b>",
+        "<br>Localidad:", "<b>", datos_mapa$LOC, "</b>",
+        "<br>Fuente de Abastecimiento:", "<b>", datos_mapa$f_abast, "</b>",
+        "<br>", col_actual, ": <b>", datos_mapa[[col_actual]], "</b>"
+      ),
+      icon = icons,
+      clusterOptions = markerClusterOptions(),
+      group = col_actual
+    )
+}
+
+mapa_web = mapa_web |> 
+  addLayersControl(baseGroups = columnas_interes)
+
+mapa_web
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#########################
+### Mapa web Tercera ####
+#########################
+
+
+datos_mapa = datos |>  sf::st_centroid(datos)
+names(datos_mapa)[1:(ncol(datos_mapa) - 1)]
+
+columnas_nombres = c(
+  "CVEGEO_LOC",
+  "AÑO",
+  "NOM_MUN",
+  "NOMGEO_LOC",
+  "LOC",
+  "f_abast",   # Fuente de abastecimiento
+  "coli_total",
+  "e_coli",
+  "as",        # Arsénico
+  "ba",        # Bario
+  "cd",        # Cadmio
+  "cu",        # Cobre
+  "fe",        # Hierro
+  "mn",        # Manganeso
+  "pb",        # Plomo
+  "zn",        # Zinc
+  "cn",        # Cianuros
+  "cl_res",    # Cloro residual
+  "cl",        # Cloruros
+  "dur",       # Dureza total
+  "flu",       # Fluoruros
+  "no3",       # Nitratos
+  "no2",       # Nitritos
+  "ph",        # pH
+  "sdt",       # Sólidos disueltos totales
+  "so4",       # Sulfatos
+  "cl_tot",    # Cloro total
+  "cond",      # Conductividad
+  "temp"       # Temperatura
+)
+
+names(datos_mapa)[1:(ncol(datos_mapa) - 1)] = columnas_nombres
+names(datos_mapa)
+
+# Preguntar por los NA que avisa
+datos_mapa = datos_mapa |> 
+  dplyr::mutate(dplyr::across(as:temp, as.numeric))
+
+datos_mapa = sf::st_transform(datos_mapa, crs = "WGS84")
+
+# Colores
+getColor = function(columna) {
+  sapply(columna, function(x) {
+    if (is.na(x)) {
+      "gray"
+    } else if (x == 0) {
+      "green"
+    } else if (x > 0 && x <= 0.1) {
+      "orange"
+    } else if (x > 0.1) {
+      "red"
+    } else {
+      "gray"
+    }
+  })
+}
+
+
+columnas_interes = names(datos_mapa)[9:29]
+columnas_completas =  c(
+  "Arsénico",
+  "Bario",
+  "Cadmio",
+  "Cobre",
+  "Hierro",
+  "Manganeso",
+  "Plomo",
+  "Zinc",
+  "Cianuros",
+  "Cloro residual",
+  "Cloruros",
+  "Dureza total",
+  "Fluoruros",
+  "Nitratos",
+  "Nitritos",
+  "pH",
+  "Sólidos disueltos totales",
+  "Sulfatos",
+  "Cloro total",
+  "Conductividad",
+  "Temperatura"
+)
+
+
+# Extras para el mapa 
+municipios = sf::read_sf("../../Importantes_documentos_usar/Municipios/municipiosjair.shp")
+
+
+
+loc_map = datos_mapa |>
+  sf::st_drop_geometry() |>
+  dplyr::group_by(CVEGEO_LOC) |>
+  dplyr::summarise(dplyr::across(as:temp, mean, na.rm = TRUE))
+
+loc_geometry = datos |> 
+  dplyr::select(CVEGEO_LOC,NOMGEO_LOC,geometry) |> 
+  dplyr::distinct(geometry, .keep_all = TRUE) # Filtrar geometria unica
+
+loc_map = merge(x = loc_map, y = loc_geometry, by = "CVEGEO_LOC")
+loc_map = sf::st_as_sf(x = loc_map, crs = sf::st_crs(datos))
+loc_map = sf::st_transform(x = loc_map, crs = sf::st_crs(datos_mapa))
+
+plot(loc_map$geometry)
+
+library(leaflet)
+mapa_web = leaflet() |> 
+  addTiles()
+
+for (x in seq_along(columnas_interes)) {
+  col_actual = columnas_interes[x]
+  print(col_actual)
+  
+  colores = getColor(datos_mapa[[col_actual]])
+  colores_localidad = getColor(loc_map[[col_actual]])
+  
+  icons = awesomeIcons(
+    icon = 'ios-close',
+    iconColor = 'black',
+    library = 'ion',
+    markerColor = colores
+  )
+  
+  mapa_web = mapa_web  |> 
+    addAwesomeMarkers(
+      data = datos_mapa,
+      label = datos_mapa$f_abast,
+      popup = paste(
+        "Municipio:", "<b>", datos_mapa$NOM_MUN, "</b>",
+        "<br>Localidad:", "<b>", datos_mapa$LOC, "</b>",
+        "<br>Fuente de Abastecimiento:", "<b>", datos_mapa$f_abast, "</b>",
+        "<br>", columnas_completas[x], ": <b>", ifelse(test = is.na(datos_mapa[[col_actual]]), yes = "No hay dato", no = datos_mapa[[col_actual]]), "</b>"),
+      icon = icons,
+      clusterOptions = markerClusterOptions(),
+      group = columnas_completas[x]
+    ) |> 
+    addPolygons(data = loc_map , label = loc_map$NOMGEO_LOC, color = "black", fillColor = colores_localidad, fillOpacity = 0.1, weight = 1, group = columnas_completas[x])
+}
+
+
+
+mapa_web = mapa_web |> 
+  addLayersControl(baseGroups = columnas_completas, options = layersControlOptions(collapsed = F)) |> 
+  addLegend("bottomleft", colors = c('green', 'orange', 'red', 'gray'), values = datos_mapa$as,
+            title = "Simbología",
+            labels = c("Bueno", "Medio", "Malo", "No hay dato"),
+            opacity = 1)
+
+mapa_web = mapa_web |> 
+  addPolygons(data = municipios, label = municipios$NOM_MUN, fillColor = "gray", color = "gray", fillOpacity = 0.1, opacity = 1,weight = 0.5) #|> 
+
+mapa_web
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################
+### Todos los mapas ###
+#######################
+
+datos_mapa = datos
+datos_mapa = datos |>  sf::st_centroid(datos)
+names(datos_mapa)[1:(ncol(datos_mapa) - 1)]
+
+columnas_nombres = c(
+  "CVEGEO_LOC",
+  "AÑO",
+  "NOM_MUN",
+  "NOMGEO_LOC",
+  "LOC",
+  "f_abast",   # Fuente de abastecimiento
+  "coli_total",
+  "e_coli",
+  "as",        # Arsénico
+  "ba",        # Bario
+  "cd",        # Cadmio
+  "cu",        # Cobre
+  "fe",        # Hierro
+  "mn",        # Manganeso
+  "pb",        # Plomo
+  "zn",        # Zinc
+  "cn",        # Cianuros
+  "cl_res",    # Cloro residual
+  "cl",        # Cloruros
+  "dur",       # Dureza total
+  "flu",       # Fluoruros
+  "no3",       # Nitratos
+  "no2",       # Nitritos
+  "ph",        # pH
+  "sdt",       # Sólidos disueltos totales
+  "so4",       # Sulfatos
+  "cl_tot",    # Cloro total
+  "cond",      # Conductividad
+  "temp"       # Temperatura
+)
+
+names(datos_mapa)[1:(ncol(datos_mapa) - 1)] = columnas_nombres
+names(datos_mapa)
+
+# Preguntar por los NA que avisa
+datos_mapa = datos_mapa |> 
+  dplyr::mutate(dplyr::across(as:temp, as.numeric))
+
+datos_mapa = sf::st_transform(datos_mapa, crs = "WGS84")
+
+# Colores
+getColor = function(columna) {
+  sapply(columna, function(x) {
+    if (is.na(x)) {
+      "gray"
+    } else if (x == 0) {
+      "green"
+    } else if (x > 0 && x <= 0.1) {
+      "orange"
+    } else if (x > 0.1) {
+      "red"
+    } else {
+      "gray"
+    }
+  })
+}
+
+
+columnas_interes = names(datos_mapa)[9:29]
+columnas_completas =  c(
+  "Arsénico",
+  "Bario",
+  "Cadmio",
+  "Cobre",
+  "Hierro",
+  "Manganeso",
+  "Plomo",
+  "Zinc",
+  "Cianuros",
+  "Cloro residual",
+  "Cloruros",
+  "Dureza total",
+  "Fluoruros",
+  "Nitratos",
+  "Nitritos",
+  "pH",
+  "Sólidos disueltos totales",
+  "Sulfatos",
+  "Cloro total",
+  "Conductividad",
+  "Temperatura"
+)
+
+
+# Extras para el mapa 
+municipios = sf::read_sf("../../Importantes_documentos_usar/Municipios/municipiosjair.shp")
+
+
+
+
+
+
+
+anios = datos_mapa$AÑO |>  unique()
+guardo = datos_mapa
+
+todos_mapas = list()
+for (i in seq_along(anios)) {
+  library(leaflet)
+  datos_mapa = guardo
+  
+  datos_mapa = datos_mapa |> 
+    dplyr::filter(AÑO == anios[i])
+  
+  loc_map = datos_mapa |>
+    sf::st_drop_geometry() |>
+    dplyr::group_by(CVEGEO_LOC) |>
+    dplyr::summarise(dplyr::across(as:temp, mean, na.rm = TRUE))
+  
+  loc_geometry = datos |> 
+    dplyr::filter(Año == anios[i]) |> 
+    dplyr::select(CVEGEO_LOC,NOMGEO_LOC,geometry) |> 
+    dplyr::distinct(geometry, .keep_all = TRUE) # Filtrar geometria unica
+  
+  loc_map = merge(x = loc_map, y = loc_geometry, by = "CVEGEO_LOC")
+  loc_map = sf::st_as_sf(x = loc_map, crs = sf::st_crs(datos))
+  loc_map = sf::st_transform(x = loc_map, crs = sf::st_crs(datos_mapa))
+  
+  
+  
+  mapa_web = leaflet() |> 
+  addTiles()
+
+  for (x in seq_along(columnas_interes)) {
+    col_actual = columnas_interes[x]
+    print(col_actual)
+    
+    colores = getColor(datos_mapa[[col_actual]])
+    colores_localidad = getColor(loc_map[[col_actual]])
+    
+    icons = awesomeIcons(
+      icon = 'ios-close',
+      iconColor = 'black',
+      library = 'ion',
+      markerColor = colores
+    )
+    
+    mapa_web = mapa_web  |> 
+      addAwesomeMarkers(
+        data = datos_mapa,
+        label = datos_mapa$f_abast,
+        popup = paste(
+          "Municipio:", "<b>", datos_mapa$NOM_MUN, "</b>",
+          "<br>Localidad:", "<b>", datos_mapa$LOC, "</b>",
+          "<br>Fuente de Abastecimiento:", "<b>", datos_mapa$f_abast, "</b>",
+          "<br>", columnas_completas[x], ": <b>", ifelse(test = is.na(datos_mapa[[col_actual]]), yes = "No hay dato", no = datos_mapa[[col_actual]]), "</b>"),
+        icon = icons,
+        clusterOptions = markerClusterOptions(),
+        group = columnas_completas[x]
+      ) |> 
+      addPolygons(data = loc_map, label = loc_map$NOMGEO_LOC, color = "black", fillColor = colores_localidad, fillOpacity = 0.1, weight = 1, group = columnas_completas[x])
+  }
+
+
+
+  mapa_web = mapa_web |> 
+    addLayersControl(baseGroups = columnas_completas, options = layersControlOptions(collapsed = F)) |> 
+    addLegend("bottomleft", colors = c('green', 'orange', 'red', 'gray'), values = datos_mapa$as,
+              title = "Simbología",
+              labels = c("Bueno", "Medio", "Malo", "No hay dato"),
+              opacity = 1)
+  
+  mapa_web = mapa_web |> 
+    addPolygons(data = municipios, label = municipios$NOM_MUN, fillColor = "gray", color = "gray", fillOpacity = 0.1, opacity = 1,weight = 0.5) #|> 
+  
+  mapa_web
+  
+  todos_mapas[[i]] = mapa_web
+}
+
+todos_mapas[[1]] 
+
+
+
+
+sf::write_sf(datos_mapa, "app/assets/Datos/Datos_2012_2023_shp/Datos_2012_2023_prueba.shp")
+
+
